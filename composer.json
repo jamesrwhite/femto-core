@@ -1,0 +1,22 @@
+{
+	"name": "femto/core",
+	"type": "library",
+	"description": "The core of the Femto framework",
+	"keywords": ["femto"],
+	"homepage": "https://github.com/jamesrwhite/femto-core",
+	"license": "MIT",
+	"authors": [
+		{
+			"name": "James White",
+			"email": "dev.jameswhite@gmail.com",
+			"homepage": "http://jamesrwhite.co.uk",
+			"role": "Developer"
+		}
+	],
+	"require": {
+		"php": ">=5.3.0"
+	},
+	"autoload": {
+		"classmap": ["femto.php"]
+	}
+}
