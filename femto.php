@@ -22,7 +22,7 @@ class Femto
 	 * Holds the name of the page is being displayed
 	 * @var string
 	 */
-	private $_page;
+	public $page;
 
 	/**
 	 * Directory path of the application route, this needs to be passed in
@@ -78,10 +78,10 @@ class Femto
 		try {
 
 			// Set the page, default to index for requests to /
-			$this->_page = $_SERVER['REQUEST_URI'] === '/' ? 'index' : $_SERVER['REQUEST_URI'];
+			$this->page = $_SERVER['REQUEST_URI'] === '/' ? 'index' : $_SERVER['REQUEST_URI'];
 
 			// Load the page that was requested
-			$this->_loadFile($this->_page, self::FEMTO_PAGE);
+			$this->_loadFile($this->page, self::FEMTO_PAGE);
 
 			// No errors? Ok, let's do this then!
 			ob_flush();
