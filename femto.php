@@ -80,6 +80,9 @@ class Femto
 			// Set the page, default to index for requests to /
 			$this->page = $_SERVER['REQUEST_URI'] === '/' ? 'index' : $_SERVER['REQUEST_URI'];
 
+			// Trim any slashes
+			$this->page = trim($this->page, '/');
+
 			// Load the page that was requested
 			$this->_loadFile($this->page, self::FEMTO_PAGE);
 
