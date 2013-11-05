@@ -13,40 +13,40 @@ require __DIR__ . '/exceptions.php';
 class Femto
 {
 	/**
-	 * Holds config arrays that have been requested using getConfig
-	 * @var array
-	 */
-	private $_config = array();
-
-	/**
 	 * Holds the name of the page is being displayed
 	 * @var string
 	 */
 	public $page;
 
 	/**
+	 * A string representing the template being used or not if that's the case
+	 * @var string
+	 */
+	public $template;
+
+	/**
+	 * An array of variables to be passed to the template
+	 * @var array
+	 */
+	private $_template_vars;
+
+	/**
+	 * The buffered page content that will be passed to a template if one is present
+	 * @var string
+	 */
+	private $_template_content;
+
+	/**
+	 * Holds config arrays that have been requested using getConfig
+	 * @var array
+	 */
+	private $_config = array();
+
+	/**
 	 * Directory path of the application route, this needs to be passed in
 	 * @var string
 	 */
 	private $_app_root;
-
-	/**
-	 * Used to indicate that the file type is a page
-	 * @var int
-	 */
-	const FEMTO_PAGE = 1;
-
-	/**
-	 * Used to indicate that the file type is a fragment
-	 * @var int
-	 */
-	const FEMTO_FRAGMENT = 2;
-
-	/**
-	 * Used to indicate that the file type is a config
-	 * @var int
-	 */
-	const FEMTO_CONFIG = 3;
 
 	/**
 	 * Set the application root directory
@@ -72,10 +72,10 @@ class Femto
 
 		}
 
-		// Start the output buffer captain!
-		ob_start();
-
 		try {
+
+			// Start the output buffer captain
+			ob_start();
 
 			// Set the page, default to index for requests to /
 			$this->page = $_SERVER['REQUEST_URI'] === '/' ? 'index' : $_SERVER['REQUEST_URI'];
@@ -84,10 +84,25 @@ class Femto
 			$this->page = trim($this->page, '/');
 
 			// Load the page that was requested
-			$this->_loadFile($this->page, self::FEMTO_PAGE);
+			$this->_loadFile($this->page, 'page');
 
-			// No errors? Ok, let's do this then!
-			ob_flush();
+			// If a template was set we need to get the page content and pass it to the template
+			if ($this->template !== null) {
+
+				// Set the template content var
+				$this->_template_content = ob_get_clean();
+
+				// Restart the buffer
+				ob_start();
+
+				// Load the template with any template vars that were passed in earlier
+				// from the page
+				$this->_loadFile($this->template, 'template', $this->_template_vars);
+
+			}
+
+			// Any finally output everything in the buffer
+			ob_end_flush();
 
 		} catch (FemtoPageNotFoundException $e) {
 
@@ -131,7 +146,7 @@ class Femto
 		if (!isset($this->_config[$type])) {
 
 			// Um, load it
-			$config = $this->_loadFile($type, self::FEMTO_CONFIG);
+			$config = $this->_loadFile($type, 'config');
 
 			// Check it's what we expect
 			if (!is_array($config)) {
@@ -152,34 +167,63 @@ class Femto
 
 		}
 
-		throw new FemtoException("Unable to locate config variable '{$variable}' of type '{$type}' in file " . $this->_getFilePath($type, self::FEMTO_CONFIG));
+		throw new FemtoException("Unable to locate config variable '{$variable}' of type '{$type}' in file " . $this->_getFilePath($type, 'config'));
 	}
 
 	/**
 	 * Can be called from pages and fragments to load a fragment directly in place
 	 *
 	 * @param string $name The fragment name
-	 * @param array $variables An associative array of vars to pass to the fragment passing
-	 * array('a' => 'b') will result in $a = 'b' in the fragment
+	 * @param array $variables An associative array of vars to pass to the fragment.
+	 * Passing array('a' => 'b') will result in $a = 'b' in the fragment
 	 * @return void
 	 */
 	public function useFragment($name, $variables = false)
 	{
-		$this->_loadFile($name, self::FEMTO_FRAGMENT, $variables);
+		$this->_loadFile($name, 'fragment', $variables);
+	}
+
+	/**
+	 * Can be called from pages to specifiy a template that they want to use
+	 * @param string $name The template name
+	 * @param array $variables an associative array of variables to be passed to the template.
+	 * Passing array('a' => 'b') will result in $a = 'b' in the fragment
+	 * @return void
+	 */
+	public function useTemplate($name, $variables = false)
+	{
+		$this->template = $name;
+		$this->_template_vars = $variables ? $variables : array();
+	}
+
+	/**
+	 * Retrieves and displays the template content
+	 * @throws FemtoException if no template is set
+	 * @return string $template_content
+	 */
+	public function templateContent()
+	{
+		if ($this->template === null) {
+
+			throw new FemtoException("No template has been set so you can't get any content for it!");
+
+		}
+
+		echo $this->_template_content;
 	}
 
 	/**
 	 * Helper function to return the file path for a file of a given type
 	 *
 	 * @param string $file The file name
-	 * @param int The file type, use one of the FEMTO_X constants for this
-	 * @throws FemtoException if the file is not one of the FEMTO_X constants
+	 * @param int The file type, one of page, template, fragment, config
+	 * @throws FemtoException if the file is not one of page, template, fragment, config
 	 * @return string The file path
 	 */
 	private function _getFilePath($file, $type)
 	{
 		// Validate the type of file is supported
-		if (!in_array($type, array(self::FEMTO_PAGE, self::FEMTO_FRAGMENT, self::FEMTO_CONFIG))) {
+		if (!in_array($type, array('page', 'template', 'fragment', 'config'))) {
 
 			throw new FemtoException("The type of file '{$type}' is not supported by Femto");
 
@@ -188,19 +232,11 @@ class Femto
 		// Stop people trying anything clever with file paths
 		$file = str_replace('..', '', $file);
 
+		// Pluralise the type unless it's a config
+		$type = $type === 'config' ? $type : "{$type}s";
+
 		// Return the appropriate file path
-		switch ($type) {
-
-			case self::FEMTO_PAGE:
-				return "{$this->_app_root}/pages/{$file}.php";
-
-			case self::FEMTO_FRAGMENT:
-				return "{$this->_app_root}/fragments/{$file}.php";
-
-			case self::FEMTO_CONFIG:
-				return "{$this->_app_root}/config/{$file}.php";
-
-		}
+		return "{$this->_app_root}/{$type}/{$file}.php";
 	}
 
 	/**
@@ -208,7 +244,7 @@ class Femto
 	 * inject the given $variables into it
 	 *
 	 * @param string $file The file name
-	 * @param int The file type, use one of the FEMTO_X constants for this
+	 * @param int The file type, use one of page, template, fragment, configs
 	 * @param array $variables An associative array of vars to pass to the file passing
 	 * array('a' => 'b') will result in $a = 'b' in the file
 	 * @throws FemtoPageNotFoundException If the type is page and it could not be found
@@ -225,18 +261,7 @@ class Femto
 		if (!file_exists($this->_temp_path)) {
 
 			// If not then we need to throw the appropriate exception type
-			switch ($type) {
-
-				case self::FEMTO_PAGE:
-					throw new FemtoPageNotFoundException("Unable to locate the requested page at path '{$this->_temp_path}'");
-
-				case self::FEMTO_FRAGMENT:
-					throw new FemtoFragmentNotFoundException("Unable to locate the requested fragment at path '{$this->_temp_path}'");
-
-				case self::FEMTO_CONFIG:
-					throw new FemtoConfigNotFoundException("Unable to locate the requested config at path '{$this->_temp_path}'");
-
-			}
+			throw new FemtoPageNotFoundException("Unable to locate the requested {$type} at path '{$this->_temp_path}'");
 
 		}
 
