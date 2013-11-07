@@ -74,45 +74,18 @@ class Femto
 
 		try {
 
-			// Start the output buffer captain
-			ob_start();
-
-			// Set the page, default to index for requests to /
-			$this->page = $_SERVER['REQUEST_URI'] === '/' ? 'index' : $_SERVER['REQUEST_URI'];
-
-			// Trim any slashes
-			$this->page = trim($this->page, '/');
-
-			// Load the page that was requested
-			$this->_loadFile($this->page, 'page');
-
-			// If a template was set we need to get the page content and pass it to the template
-			if ($this->template !== null) {
-
-				// Set the template content var
-				$this->_template_content = ob_get_clean();
-
-				// Restart the buffer
-				ob_start();
-
-				// Load the template with any template vars that were passed in earlier
-				// from the page
-				$this->_loadFile($this->template, 'template', $this->_template_vars);
-
-			}
-
-			// Any finally output everything in the buffer
-			ob_end_flush();
+			// Load the page, if one isn't specified in the request load the index page
+			$this->_loadPage(trim($_SERVER['REQUEST_URI'] === '/' ? 'index' : $_SERVER['REQUEST_URI']));
 
 		} catch (FemtoPageNotFoundException $e) {
 
 			// Set a 404 header because we couldn't find the page
 			header('HTTP/1.1 404 Not Found');
 			
-			// Make sure the 404 is maintained if the 404 fragment doesn't exist
+			// Make sure the 404 is maintained if the 404 page doesn't exist
 			try {
 
-				$this->useFragment('femto/404');
+				$this->_loadPage('404');
 
 			} catch (Exception $e) {}
 
@@ -125,8 +98,8 @@ class Femto
 			// Let the world know that you messed up
 			header('HTTP/1.1 500 Internal Server Error');
 
-			// Load the 500 fragment, if this fails it doesn't really make any difference
-			$this->useFragment('femto/500', array('e' => $e));
+			// Load the 500 page, if this fails it doesn't really make any difference
+			$this->_loadPage('500', array('e' => $e));
 
 		}
 	}
@@ -210,6 +183,42 @@ class Femto
 		}
 
 		echo $this->_template_content;
+	}
+
+	/**
+	 * Tries to load a page
+	 *
+	 * @param string $page The name of the file in the pages dir excluding the extension
+	 * @return void
+	 */
+	private function _loadPage($page)
+	{
+		// Start the output buffer captain
+		ob_start();
+
+		// Store the page
+		$this->page = $page;
+
+		// Load the page that was requested
+		$this->_loadFile($this->page, 'page');
+
+		// If a template was set we need to get the page content and pass it to the template
+		if ($this->template !== null) {
+
+			// Set the template content var
+			$this->_template_content = ob_get_clean();
+
+			// Restart the buffer
+			ob_start();
+
+			// Load the template with any template vars that were passed in earlier
+			// from the page
+			$this->_loadFile($this->template, 'template', $this->_template_vars);
+
+		}
+
+		// Any finally output everything in the buffer
+		ob_end_flush();
 	}
 
 	/**
