@@ -77,8 +77,6 @@ class Femto
 			// Load the page, if one isn't specified in the request load the index page
 			$this->_loadPage(trim($_SERVER['REQUEST_URI'] === '/' ? 'index' : $_SERVER['REQUEST_URI']));
 
-			throw new Exception;
-
 		} catch (FemtoPageNotFoundException $e) {
 
 			// Set a 404 header because we couldn't find the page
