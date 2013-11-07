@@ -77,11 +77,16 @@ class Femto
 			// Load the page, if one isn't specified in the request load the index page
 			$this->_loadPage(trim($_SERVER['REQUEST_URI'] === '/' ? 'index' : $_SERVER['REQUEST_URI']));
 
+			throw new Exception;
+
 		} catch (FemtoPageNotFoundException $e) {
 
 			// Set a 404 header because we couldn't find the page
 			header('HTTP/1.1 404 Not Found');
 			
+			// We need to reset the template state
+			$this->_resetTemplate();
+
 			// Make sure the 404 is maintained if the 404 page doesn't exist
 			try {
 
@@ -93,10 +98,13 @@ class Femto
 
 			// Discard the output buffer, we don't want to display content
 			// if an exception was caught
-			ob_clean();
+			ob_end_clean();
 
 			// Let the world know that you messed up
 			header('HTTP/1.1 500 Internal Server Error');
+
+			// We need to reset the template state
+			$this->_resetTemplate();
 
 			// Load the 500 page, if this fails it doesn't really make any difference
 			$this->_loadPage('500', array('e' => $e));
@@ -189,9 +197,11 @@ class Femto
 	 * Tries to load a page
 	 *
 	 * @param string $page The name of the file in the pages dir excluding the extension
+	 * @param array $variables An associative array of vars to pass to the file passing
+	 * array('a' => 'b') will result in $a = 'b' in the page
 	 * @return void
 	 */
-	private function _loadPage($page)
+	private function _loadPage($page, $variables = false)
 	{
 		// Start the output buffer captain
 		ob_start();
@@ -200,7 +210,7 @@ class Femto
 		$this->page = $page;
 
 		// Load the page that was requested
-		$this->_loadFile($this->page, 'page');
+		$this->_loadFile($this->page, 'page', $variables);
 
 		// If a template was set we need to get the page content and pass it to the template
 		if ($this->template !== null) {
@@ -219,6 +229,17 @@ class Femto
 
 		// Any finally output everything in the buffer
 		ob_end_flush();
+	}
+
+	/**
+	 * Pretty self explanatory, helper to reset template state
+	 *
+	 * @return void
+	 */
+	private function _resetTemplate()
+	{
+		$this->template = null;
+		$this->_template_vars = null;
 	}
 
 	/**
