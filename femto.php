@@ -6,6 +6,7 @@ require __DIR__ . '/exceptions.php';
 /**
  * Femto Framework
  *
+ * @version 0.2.4
  * @author James White <dev.jameswhite@gmail.com>
  * @license http://opensource.org/licenses/MIT MIT
  */
@@ -49,6 +50,12 @@ class Femto
 	private $_app_root;
 
 	/**
+	 * Holds the cleaned requset uri
+	 * @var string
+	 */
+	private $_request_uri;
+
+	/**
 	 * Set the application root directory
 	 * @param string $app_root
 	 * @return void
@@ -75,13 +82,14 @@ class Femto
 		try {
 
 			// Load the page, if one isn't specified in the request load the index page
-			$this->_loadPage(trim($_SERVER['REQUEST_URI'] === '/' ? 'index' : $_SERVER['REQUEST_URI']));
+			$this->_request_uri = str_replace(array('?', $_SERVER['QUERY_STRING']), '', $_SERVER['REQUEST_URI']);
+			$this->_loadPage(trim($this->_request_uri === '/' ? 'index' : $this->_request_uri, '/'));
 
 		} catch (FemtoPageNotFoundException $e) {
 
 			// Set a 404 header because we couldn't find the page
 			header('HTTP/1.1 404 Not Found');
-			
+
 			// We need to reset the template state
 			$this->_resetTemplate();
 
@@ -192,6 +200,23 @@ class Femto
 	}
 
 	/**
+	 * Returns a part of the url or null if it doesn't exist
+	 * @param int $part_number 1 indexed url part number e.g /a/b a is part 1 and b is part 2
+	 * @return string|null the url part
+	 */
+	public function getUrlPart($part_number)
+	{
+		// Split the url into an array by slashes
+		$request_uri = array_filter(explode('/', $this->_request_uri), function($part) {
+
+			return !empty($part);
+
+		});
+
+		return !empty($request_uri[$part_number]) ? $request_uri[$part_number] : null;
+	}
+
+	/**
 	 * Tries to load a page
 	 *
 	 * @param string $page The name of the file in the pages dir excluding the extension
@@ -225,7 +250,7 @@ class Femto
 
 		}
 
-		// Any finally output everything in the buffer
+		// And finally output everything in the buffer
 		ob_end_flush();
 	}
 
@@ -288,8 +313,11 @@ class Femto
 		// First let's check that file actually exists!
 		if (!file_exists($this->_temp_path)) {
 
+			// Make sure we are using the correct exception type!
+			$exception_class = 'Femto' . ucfirst($type) . 'NotFoundException';
+
 			// If not then we need to throw the appropriate exception type
-			throw new FemtoPageNotFoundException("Unable to locate the requested {$type} at path '{$this->_temp_path}'");
+			throw new $exception_class("Unable to locate the requested {$type} at path '{$this->_temp_path}'");
 
 		}
 
@@ -301,7 +329,7 @@ class Femto
 		}
 
 		// Tidy up a bit after ourselves
-		unset($variables, $type, $file);
+		unset($variables, $type, $file, $exception_class);
 
 		return require $this->_temp_path;
 	}
