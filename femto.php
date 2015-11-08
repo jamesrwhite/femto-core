@@ -74,19 +74,14 @@ class Femto
 	{
 		// Was the application route defined?
 		if ($this->_app_root === null) {
-
 			throw new FemtoException('You must define the application route first, do so by calling $femto->setAppRoot($dir)');
-
 		}
 
 		try {
-
 			// Load the page, if one isn't specified in the request load the index page
 			$this->_request_uri = str_replace(array('?', $_SERVER['QUERY_STRING']), '', $_SERVER['REQUEST_URI']);
 			$this->_loadPage(trim($this->_request_uri === '/' ? 'index' : $this->_request_uri, '/'));
-
 		} catch (FemtoPageNotFoundException $e) {
-
 			// Set a 404 header because we couldn't find the page
 			header('HTTP/1.1 404 Not Found');
 
@@ -95,13 +90,9 @@ class Femto
 
 			// Make sure the 404 is maintained if the 404 page doesn't exist
 			try {
-
 				$this->_loadPage('404');
-
 			} catch (Exception $e) {}
-
 		} catch (Exception $e) {
-
 			// Discard the output buffer, we don't want to display content
 			// if an exception was caught
 			ob_end_clean();
@@ -114,7 +105,6 @@ class Femto
 
 			// Load the 500 page, if this fails it doesn't really make any difference
 			$this->_loadPage('500', array('e' => $e));
-
 		}
 	}
 
@@ -137,21 +127,16 @@ class Femto
 
 			// Check it's what we expect
 			if (!is_array($config)) {
-
 				throw new FemtoException("Unable to parse config of type '{$type}'");
-
 			}
 
 			// Cache the config
 			$this->_config[$type] = $config;
-
 		}
 
 		// Can we find the requested variable in the config array?
 		if (isset($this->_config[$type][$variable])) {
-
 			return $this->_config[$type][$variable];
-
 		}
 
 		throw new FemtoException("Unable to locate config variable '{$variable}' of type '{$type}' in file " . $this->_getFilePath($type, 'config'));
@@ -191,9 +176,7 @@ class Femto
 	public function templateContent()
 	{
 		if ($this->template === null) {
-
 			throw new FemtoException("No template has been set so you can't get any content for it!");
-
 		}
 
 		echo $this->_template_content;
@@ -208,9 +191,7 @@ class Femto
 	{
 		// Split the url into an array by slashes
 		$request_uri = array_filter(explode('/', $this->_request_uri), function($part) {
-
 			return !empty($part);
-
 		});
 
 		return !empty($request_uri[$part_number]) ? $request_uri[$part_number] : null;
@@ -237,7 +218,6 @@ class Femto
 
 		// If a template was set we need to get the page content and pass it to the template
 		if ($this->template !== null) {
-
 			// Set the template content var
 			$this->_template_content = ob_get_clean();
 
@@ -247,7 +227,6 @@ class Femto
 			// Load the template with any template vars that were passed in earlier
 			// from the page
 			$this->_loadFile($this->template, 'template', $this->_template_vars);
-
 		}
 
 		// And finally output everything in the buffer
@@ -277,9 +256,7 @@ class Femto
 	{
 		// Validate the type of file is supported
 		if (!in_array($type, array('page', 'template', 'fragment', 'config'))) {
-
 			throw new FemtoException("The type of file '{$type}' is not supported by Femto");
-
 		}
 
 		// Stop people trying anything clever with file paths
@@ -312,20 +289,16 @@ class Femto
 
 		// First let's check that file actually exists!
 		if (!file_exists($this->_temp_path)) {
-
 			// Make sure we are using the correct exception type!
 			$exception_class = 'Femto' . ucfirst($type) . 'NotFoundException';
 
 			// If not then we need to throw the appropriate exception type
 			throw new $exception_class("Unable to locate the requested {$type} at path '{$this->_temp_path}'");
-
 		}
 
 		// Check if any variables were passed in, if so extract them for use in the template
 		if ($variables !== false and is_array($variables)) {
-
 			extract($variables);
-
 		}
 
 		// Tidy up a bit after ourselves
